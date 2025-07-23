@@ -8,7 +8,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-clave-ultr
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 // Registrar usuario
-export const register = async (req, res) => {
+ const register = async (req, res) => {
   try {
     const { nombre, user, password, pregunta, respuestapregunta } = req.body;
 
@@ -36,7 +36,7 @@ export const register = async (req, res) => {
 };
 
 // Login de usuario
-export const login = async (req, res) => {
+ const login = async (req, res) => {
   try {
     const { user, password } = req.body;
 
@@ -61,7 +61,7 @@ export const login = async (req, res) => {
 };
 
 // Resetear contraseña
-export const resetPassword = async (req, res) => {
+ const resetPassword = async (req, res) => {
   try {
     const { user, respuestapregunta, nuevaPassword } = req.body;
 
@@ -88,7 +88,7 @@ export const resetPassword = async (req, res) => {
 };
 
 // Logout (simulado)
-export const logout = async (req, res) => {
+ const logout = async (req, res) => {
   try {
     // Aquí podrías invalidar el refresh token si tienes almacenamiento
     res.status(200).json({ message: 'Sesión cerrada correctamente' });
@@ -98,7 +98,7 @@ export const logout = async (req, res) => {
 };
 
 // Refrescar token
-export const refreshToken = async (req, res) => {
+ const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -116,4 +116,12 @@ export const refreshToken = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+module.exports = {
+  register,
+  login,
+  resetPassword,
+  logout,
+  refreshToken,
+  // agrega más funciones si las tienes
 };
