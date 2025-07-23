@@ -70,7 +70,10 @@ export const resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (existingUser.respuestapregunta !== respuestapregunta) {
+    if (
+      existingUser.respuestapregunta.trim().toLowerCase() !==
+      respuestapregunta.trim().toLowerCase()
+    ) {
       return res.status(401).json({ error: 'Respuesta incorrecta' });
     }
 
@@ -87,7 +90,7 @@ export const resetPassword = async (req, res) => {
 // Logout (simulado)
 export const logout = async (req, res) => {
   try {
-    // En aplicaciones reales deberías invalidar el refresh token del lado del servidor
+    // Aquí podrías invalidar el refresh token si tienes almacenamiento
     res.status(200).json({ message: 'Sesión cerrada correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -97,13 +100,13 @@ export const logout = async (req, res) => {
 // Refrescar token
 export const refreshToken = async (req, res) => {
   try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(401).json({ error: 'Token requerido' });
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token requerido' });
     }
 
-    jwt.verify(token, JWT_REFRESH_SECRET, (err, decoded) => {
-      if (err) return res.status(403).json({ error: 'Token inválido' });
+    jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
+      if (err) return res.status(403).json({ error: 'Refresh token inválido' });
 
       const payload = { id: decoded.id, user: decoded.user };
       const newToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
