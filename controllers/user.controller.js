@@ -2,9 +2,9 @@ const User = require('../models/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'clave-ultra-secreta';
+const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-clave-ultra-segura';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'otra-clave-muy-secreta-y-larga';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 // Registrar usuario
