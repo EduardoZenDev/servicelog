@@ -18,13 +18,14 @@ const register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedRespuesta = await bcrypt.hash(respuestapregunta, 10);
 
     const newUser = new User({
       nombre,
       user,
       password: hashedPassword,
       pregunta,
-      respuestapregunta
+      respuestapregunta: hashedRespuesta,
     });
 
     await newUser.save();
@@ -84,10 +85,8 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (
-      existingUser.respuestapregunta.trim().toLowerCase() !==
-      respuestapregunta.trim().toLowerCase()
-    ) {
+    const isRespuestaCorrecta = await bcrypt.compare(respuestapregunta, existingUser.respuestapregunta);
+    if (!isRespuestaCorrecta) {
       return res.status(401).json({ error: 'Respuesta incorrecta' });
     }
 
