@@ -1,6 +1,11 @@
 const User = require('../models/user.model');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'clave-ultra-segura';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
 
 // Crear usuario (Register)
 exports.register = async (req, res) => {
@@ -81,7 +86,7 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// Login
+// Login con JWT
 exports.login = async (req, res) => {
   const { user, password } = req.body;
   try {
@@ -91,7 +96,22 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, foundUser.password);
     if (!valid) return res.status(401).json({ error: "Contraseña incorrecta" });
 
-res.json({ message: "Inicio de sesión exitoso", id: foundUser.id, nombre: foundUser.nombre });
+    const token = jwt.sign(
+      {
+        id: foundUser.id,
+        nombre: foundUser.nombre,
+        user: foundUser.user
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      message: "Inicio de sesión exitoso",
+      id: foundUser.id,
+      nombre: foundUser.nombre,
+      token
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -128,4 +148,17 @@ exports.resetPassword = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+// Validar token desde otros microservicios
+exports.validateToken = (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ error: 'Token inválido' });
+    res.status(200).json({ valid: true, user: decoded });
+  });
 };
