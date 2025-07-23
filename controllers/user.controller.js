@@ -51,10 +51,10 @@ const getPregunta = async (req, res) => {
 };
 
 // Login de usuario
+// Login
 const login = async (req, res) => {
   try {
     const { user, password } = req.body;
-
     const existingUser = await User.findOne({ user });
     if (!existingUser) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
@@ -69,11 +69,18 @@ const login = async (req, res) => {
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
 
-    res.status(200).json({ token, refreshToken });
+    // Aquí agregamos nombre e id en la respuesta
+    res.status(200).json({
+      token,
+      refreshToken,
+      id: existingUser._id,
+      nombre: existingUser.nombre
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Resetear contraseña
 const resetPassword = async (req, res) => {
