@@ -66,9 +66,15 @@ const login = async (req, res) => {
     }
 
     const payload = { id: existingUser._id, user: existingUser.user };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
-
+const token = jwt.sign(payload, JWT_SECRET, {
+  expiresIn: JWT_EXPIRES_IN,
+  issuer: 'LoginAPI',           // 👈 debes agregar esto
+  audience: 'LoginAPIUsers'     // 👈 y esto también
+});   const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
+  expiresIn: JWT_REFRESH_EXPIRES_IN,
+  issuer: 'LoginAPI',
+  audience: 'LoginAPIUsers'
+});
     // Aquí agregamos nombre e id en la respuesta
     res.status(200).json({
       token,
