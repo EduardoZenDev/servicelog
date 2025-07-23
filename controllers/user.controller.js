@@ -1,164 +1,116 @@
-const User = require('../models/user.model');
-const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+import User from '../models/user.model.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'clave-ultra-segura';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+const JWT_SECRET = process.env.JWT_SECRET || 'clave-ultra-secreta';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-clave-ultra-segura';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
-// Crear usuario (Register)
-exports.register = async (req, res) => {
-  const { nombre, user, password, pregunta, respuestapregunta } = req.body;
+// Registrar usuario
+export const register = async (req, res) => {
   try {
+    const { nombre, user, password, pregunta, respuestapregunta } = req.body;
+
+    const existingUser = await User.findOne({ user });
+    if (existingUser) {
+      return res.status(409).json({ error: 'El usuario ya existe' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedRespuesta = await bcrypt.hash(respuestapregunta, 10);
 
     const newUser = new User({
-      id: uuidv4(),
       nombre,
       user,
       password: hashedPassword,
       pregunta,
-      respuestapregunta: hashedRespuesta
+      respuestapregunta
     });
 
     await newUser.save();
-    res.status(201).json({ message: "Usuario registrado correctamente" });
+
+    res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Obtener todos los usuarios
-exports.getAllUsers = async (req, res) => {
+// Login de usuario
+export const login = async (req, res) => {
   try {
-    const users = await User.find({}, '-password -respuestapregunta');
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const { user, password } = req.body;
 
-// Obtener usuario por ID
-exports.getUserById = async (req, res) => {
-  try {
-    const user = await User.findOne({ id: req.params.id }, '-password -respuestapregunta');
-    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Actualizar usuario
-exports.updateUser = async (req, res) => {
-  try {
-    const { nombre, user, pregunta, respuestapregunta, password } = req.body;
-    const foundUser = await User.findOne({ id: req.params.id });
-    if (!foundUser) return res.status(404).json({ error: "Usuario no encontrado" });
-
-    if (nombre) foundUser.nombre = nombre;
-    if (user) foundUser.user = user;
-    if (pregunta) foundUser.pregunta = pregunta;
-    if (respuestapregunta) {
-      foundUser.respuestapregunta = await bcrypt.hash(respuestapregunta, 10);
-    }
-    if (password) {
-      foundUser.password = await bcrypt.hash(password, 10);
+    const existingUser = await User.findOne({ user });
+    if (!existingUser) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    await foundUser.save();
-    res.json({ message: "Usuario actualizado correctamente" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
 
-// Eliminar usuario
-exports.deleteUser = async (req, res) => {
-  try {
-    const deleted = await User.findOneAndDelete({ id: req.params.id });
-    if (!deleted) return res.status(404).json({ error: "Usuario no encontrado" });
-    res.json({ message: "Usuario eliminado correctamente" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const payload = { id: existingUser._id, user: existingUser.user };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
 
-// Login con JWT
-exports.login = async (req, res) => {
-  const { user, password } = req.body;
-  try {
-    const foundUser = await User.findOne({ user });
-    if (!foundUser) return res.status(404).json({ error: "Usuario no encontrado" });
-
-    const valid = await bcrypt.compare(password, foundUser.password);
-    if (!valid) return res.status(401).json({ error: "Contraseña incorrecta" });
-
-    const token = jwt.sign(
-      {
-        id: foundUser.id,
-        nombre: foundUser.nombre,
-        user: foundUser.user
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    res.json({
-      message: "Inicio de sesión exitoso",
-      id: foundUser.id,
-      nombre: foundUser.nombre,
-      token
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Obtener pregunta secreta
-exports.getPregunta = async (req, res) => {
-  const { user } = req.body;
-  try {
-    const foundUser = await User.findOne({ user });
-    if (!foundUser) return res.status(404).json({ error: "Usuario no encontrado" });
-
-    res.json({ pregunta: foundUser.pregunta });
+    res.status(200).json({ token, refreshToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 // Resetear contraseña
-exports.resetPassword = async (req, res) => {
-  const { user, respuestapregunta, nuevaPassword } = req.body;
+export const resetPassword = async (req, res) => {
   try {
-    const foundUser = await User.findOne({ user });
-    if (!foundUser) return res.status(404).json({ error: "Usuario no encontrado" });
+    const { user, respuestapregunta, nuevaPassword } = req.body;
 
-    const match = await bcrypt.compare(respuestapregunta, foundUser.respuestapregunta);
-    if (!match) return res.status(403).json({ error: "Respuesta incorrecta" });
+    const existingUser = await User.findOne({ user });
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
-    const newHashedPassword = await bcrypt.hash(nuevaPassword, 10);
-    foundUser.password = newHashedPassword;
-    await foundUser.save();
+    if (existingUser.respuestapregunta !== respuestapregunta) {
+      return res.status(401).json({ error: 'Respuesta incorrecta' });
+    }
 
-    res.json({ message: "Contraseña actualizada correctamente" });
+    const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
+    existingUser.password = hashedPassword;
+    await existingUser.save();
+
+    res.status(200).json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Validar token desde otros microservicios
-exports.validateToken = (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader?.split(' ')[1];
+// Logout (simulado)
+export const logout = async (req, res) => {
+  try {
+    // En aplicaciones reales deberías invalidar el refresh token del lado del servidor
+    res.status(200).json({ message: 'Sesión cerrada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
-  if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
+// Refrescar token
+export const refreshToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(401).json({ error: 'Token requerido' });
+    }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ error: 'Token inválido' });
-    res.status(200).json({ valid: true, user: decoded });
-  });
+    jwt.verify(token, JWT_REFRESH_SECRET, (err, decoded) => {
+      if (err) return res.status(403).json({ error: 'Token inválido' });
+
+      const payload = { id: decoded.id, user: decoded.user };
+      const newToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      res.status(200).json({ token: newToken });
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
