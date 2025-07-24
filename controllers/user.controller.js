@@ -3,9 +3,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30s';   // token expira en 30 segundos
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'otra-clave-muy-secreta-y-larga';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '1m';  // refresh token en 1 minuto
 
 // Registrar usuario
 const register = async (req, res) => {
