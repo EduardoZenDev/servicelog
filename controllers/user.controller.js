@@ -2,10 +2,11 @@ const User = require('../models/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+// Claves y expiración de tokens
 const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30s';   // token expira en 30 segundos
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30s'; // Access token
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'otra-clave-muy-secreta-y-larga';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '1m';  // refresh token en 1 minuto
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '1m'; // Refresh token
 
 // Registrar usuario
 const register = async (req, res) => {
@@ -36,7 +37,7 @@ const register = async (req, res) => {
   }
 };
 
-// Obtener pregunta secreta para recuperar contraseña
+// Obtener pregunta secreta
 const getPregunta = async (req, res) => {
   try {
     const { user } = req.body;
@@ -51,7 +52,6 @@ const getPregunta = async (req, res) => {
 };
 
 // Login de usuario
-// Login
 const login = async (req, res) => {
   try {
     const { user, password } = req.body;
@@ -66,16 +66,21 @@ const login = async (req, res) => {
     }
 
     const payload = { id: existingUser._id, user: existingUser.user };
-const token = jwt.sign(payload, JWT_SECRET, {
-  expiresIn: JWT_EXPIRES_IN,
-  issuer: 'LoginAPI',           // 👈 debes agregar esto
-  audience: 'LoginAPIUsers'     // 👈 y esto también
-});   const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
-  expiresIn: JWT_REFRESH_EXPIRES_IN,
-  issuer: 'LoginAPI',
-  audience: 'LoginAPIUsers'
-});
-    // Aquí agregamos nombre e id en la respuesta
+
+    // Access token
+    const token = jwt.sign(payload, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: 'LoginAPI',
+      audience: 'LoginAPIUsers'
+    });
+
+    // Refresh token
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
+      expiresIn: JWT_REFRESH_EXPIRES_IN,
+      issuer: 'LoginAPI',
+      audience: 'LoginAPIUsers'
+    });
+
     res.status(200).json({
       token,
       refreshToken,
@@ -87,8 +92,7 @@ const token = jwt.sign(payload, JWT_SECRET, {
   }
 };
 
-
-// Resetear contraseña
+// Restablecer contraseña
 const resetPassword = async (req, res) => {
   try {
     const { user, respuestapregunta, nuevaPassword } = req.body;
@@ -98,7 +102,11 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const isRespuestaCorrecta = await bcrypt.compare(respuestapregunta, existingUser.respuestapregunta);
+    const isRespuestaCorrecta = await bcrypt.compare(
+      respuestapregunta,
+      existingUser.respuestapregunta
+    );
+
     if (!isRespuestaCorrecta) {
       return res.status(401).json({ error: 'Respuesta incorrecta' });
     }
@@ -113,17 +121,17 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// Logout (simulado)
+// Logout simulado
 const logout = async (req, res) => {
   try {
-    // Aquí podrías invalidar el refresh token si tienes almacenamiento
+    // Si se implementa almacenamiento de refresh tokens, aquí se invalidaría
     res.status(200).json({ message: 'Sesión cerrada correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Refrescar token
+// Refrescar access token
 const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -131,14 +139,31 @@ const refreshToken = async (req, res) => {
       return res.status(401).json({ error: 'Refresh token requerido' });
     }
 
-    jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
-      if (err) return res.status(403).json({ error: 'Refresh token inválido' });
+    jwt.verify(
+      refreshToken,
+      JWT_REFRESH_SECRET,
+      {
+        issuer: 'LoginAPI',
+        audience: 'LoginAPIUsers'
+      },
+      (err, decoded) => {
+        if (err) return res.status(403).json({ error: 'Refresh token inválido o expirado' });
 
-      const payload = { id: decoded.id, user: decoded.user };
-      const newToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        if (!decoded || !decoded.id || !decoded.user) {
+          return res.status(400).json({ error: 'Refresh token mal formado' });
+        }
 
-      res.status(200).json({ token: newToken });
-    });
+        const payload = { id: decoded.id, user: decoded.user };
+
+        const newToken = jwt.sign(payload, JWT_SECRET, {
+          expiresIn: JWT_EXPIRES_IN,
+          issuer: 'LoginAPI',
+          audience: 'LoginAPIUsers'
+        });
+
+        res.status(200).json({ token: newToken });
+      }
+    );
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
