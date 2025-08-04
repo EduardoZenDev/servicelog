@@ -3,38 +3,55 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1min'; // Cambiado a 1 minuto para pruebas
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'otra-clave-muy-secreta-y-larga';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 // Registrar usuario
 const register = async (req, res) => {
   try {
-    const { nombre, user, password, pregunta, respuestapregunta } = req.body;
+    let { nombre, user, password, pregunta, respuestapregunta } = req.body;
 
+    // Validación básica de campos vacíos
+    if (!nombre || !user || !password || !pregunta || !respuestapregunta) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+
+    // Eliminar espacios en blanco innecesarios
+    nombre = nombre.trim();
+    user = user.trim();
+    pregunta = pregunta.trim();
+    respuestapregunta = respuestapregunta.trim();
+
+    // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ user });
     if (existingUser) {
       return res.status(409).json({ error: 'El usuario ya existe' });
     }
 
+    // Encriptar contraseña y respuesta
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedRespuesta = await bcrypt.hash(respuestapregunta, 10);
 
+    // Crear nuevo usuario
     const newUser = new User({
-      nombre,
-      user,
-      password: hashedPassword,
-      pregunta,
-      respuestapregunta: hashedRespuesta,
-    });
-
+  id: uuidv4(), // 👈 se genera un ID único
+  nombre,
+  user,
+  password: hashedPassword,
+  pregunta,
+  respuestapregunta: hashedRespuesta,
+});
     await newUser.save();
 
+    // Devolver mensaje exitoso
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error en registro:", err);
+    res.status(500).json({ error: 'Error del servidor al registrar usuario' });
   }
 };
+
 
 // Obtener pregunta secreta para recuperar contraseña
 const getPregunta = async (req, res) => {
