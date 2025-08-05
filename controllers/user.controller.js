@@ -1,6 +1,7 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
