@@ -4,9 +4,10 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'clave-secreta-super-segura-para-jwt-123456';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // 15 minutos para el access token
+
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'otra-clave-muy-secreta-y-larga';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30m'; // 30 minutos para el refresh token (o ajusta según necesites)
 
 // Registrar usuario
 const register = async (req, res) => {
